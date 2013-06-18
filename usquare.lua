@@ -11,7 +11,7 @@ ug_load_script ("ug_util.lua")
 -- constants
 dim        = 2; -- the problem is formulated in 2d (for debugging)
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
-numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
+numRefs    = util.GetParamNumber ("-numRefs",    1, "number of refinements")
 
 gridName = "grids/usquare.ugx"
 
@@ -98,6 +98,7 @@ vertBaseSmoother = GaussSeidelCPU1 ()
 
 -- hybrid smoother in the coarse grid solver
 baseHybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeBaseSmoother, vertBaseSmoother)
+baseHybridSmoother:set_Dirichlet (dirichletBC)
 
 -- convergence check for the coarse solver
 baseConvCheck = ConvCheck ()
@@ -119,6 +120,7 @@ vertSmoother = GaussSeidelCPU1 ()
 
 -- hybrid smoother
 hybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeSmoother, vertSmoother)
+hybridSmoother:set_Dirichlet (dirichletBC)
 
 -- transfer operators
 transferOp = NedelecTransfer (edgeApproxSpace)

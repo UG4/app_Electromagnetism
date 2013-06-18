@@ -13,7 +13,8 @@ dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
 numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 
-gridName = "grids/unitcube_6tets_bnd.ugx"
+--gridName = "grids/unitcube_6tets_bnd.ugx"
+gridName = "grids/artunitcube0_bnd.ugx"
 
 print (" Choosen Parameter:")
 print ("    numRefs    = " .. numRefs)
@@ -106,6 +107,7 @@ vertBaseSmoother = GaussSeidelCPU1 ()
 
 -- hybrid smoother in the coarse grid solver
 baseHybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeBaseSmoother, vertBaseSmoother)
+baseHybridSmoother:set_Dirichlet (dirichletBC)
 
 -- convergence check for the coarse solver
 baseConvCheck = ConvCheck ()
@@ -127,6 +129,7 @@ vertSmoother = GaussSeidelCPU1 ()
 
 -- hybrid smoother
 hybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeSmoother, vertSmoother)
+hybridSmoother:set_Dirichlet (dirichletBC)
 
 -- transfer operators
 transferOp = NedelecTransfer (edgeApproxSpace)
