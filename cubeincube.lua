@@ -32,7 +32,7 @@ dom = util.CreateAndDistributeDomain (gridName, numRefs, numPreRefs, neededSubse
 
 -- Set the electromagnetic parameters to the subdomains
 em = EMaterial (dom)
-em:add ("OuterCube", 1.0, 1.0)
+em:add ("OuterCube", 1.0, 0.0)
 em:add ("InnerCube", 1.0, 1.0e4)
 em:close ()
 
@@ -214,7 +214,7 @@ linSolver:init (A, u)
 -- 4. apply solver
 linSolver:apply_return_defect (u, b)
 
---SaveVectorForConnectionViewer (u, "Sol2d.vec")
+--SaveVectorForConnectionViewer (u, "Sol3d.vec")
 
 --------------------------------------------------------------------------------
 --  Apply projection

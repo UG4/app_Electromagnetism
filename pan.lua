@@ -1,8 +1,8 @@
 --------------------------------------------------------------------------------
 --[[!
--- \file apps/electromagnetism/ucube.lua
+-- \file apps/electromagnetism/pan.lua
 -- \author Dmitry Logashenko
--- \brief Lua-Script for the test simulation with the electromagnetism module
+-- \brief Simulation of electric field around a coil and a conducting disc
 ]]--
 --------------------------------------------------------------------------------
 
@@ -13,9 +13,10 @@ dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
 numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 
---gridName = "grids/unitcube_6tets_bnd.ugx"
-gridName = "grids/artunitcube0_bnd.ugx"
+gridName = "grids/coil_and_pan.ugx"
+--gridName = "grids/coil_and_pan_2.ugx"
 
+print (" Geometry: " .. gridName)
 print (" Choosen Parameter:")
 print ("    numRefs    = " .. numRefs)
 print ("    numPreRefs = " .. numPreRefs)
@@ -28,12 +29,14 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 --------------------------------------------------------------------------------
 
 -- Create, load, refine and distribute the domain
-neededSubsets = {"Inner", "Zeq0", "Zeq1", "Xeq0", "Xeq1", "Yeq0", "Xeq1"}
+neededSubsets = {"box", "pan", "coilPos", "coilNeg", "cut0", "cut1", "boxBnd"}
 dom = util.CreateAndDistributeDomain (gridName, numRefs, numPreRefs, neededSubsets)
 
 -- Set the electromagnetic parameters to the subdomains
 em = EMaterial (dom)
-em:add ("Inner", 1.0, 0.0)
+em:add ("box", 1.0, 0.0)
+em:add ("coilPos,coilNeg", 1.0, 0.0)
+em:add ("pan", 1.0, 1.0)
 em:close ()
 
 -- Create the edge-centered approximation space for E
@@ -56,14 +59,6 @@ vertApproxSpace:init_top_surface ()
 vertApproxSpace:print_statistic ()
 
 --------------------------------------------------------------------------------
--- User Data Setup
---------------------------------------------------------------------------------
-
-function orig_E (x, y, z, t)
-	return 2 * y - 1, - (2 * x - 1), 0
-end
-
---------------------------------------------------------------------------------
 -- FE Disc setup
 --------------------------------------------------------------------------------
 
@@ -72,18 +67,7 @@ elemDisc = EddyCurrent_E_Nedelec ("r,i", em, 1) -- last argument = frequency ome
 
 -- Dirichlet BC
 dirichletBC = NedelecDirichletBC ("r,i")
-
-dirichletBC:add ("orig_E", "r", "Xeq0")
---dirichletBC:add ("orig_E", "i", "Xeq0")
-
-dirichletBC:add ("orig_E", "r", "Xeq1")
---dirichletBC:add ("orig_E", "i", "Xeq1")
-
-dirichletBC:add ("orig_E", "r", "Yeq0")
---dirichletBC:add ("orig_E", "i", "Yeq0")
-
-dirichletBC:add ("orig_E", "r", "Yeq1")
---dirichletBC:add ("orig_E", "i", "Yeq1")
+dirichletBC:add_0 ("boxBnd")
 
 -- Global discretization
 domainDisc = DomainDiscretization (edgeApproxSpace)
@@ -98,6 +82,8 @@ domainDisc:add (dirichletBC)
 A = MatrixOperator ()
 u = GridFunction (edgeApproxSpace)
 b = GridFunction (edgeApproxSpace)
+JG = GridFunction (edgeApproxSpace)
+divJG = GridFunction3dCPU1 (vertApproxSpace)
 
 -- edge-centered smoother in the coarse grid solver
 edgeBaseSmoother = GaussSeidel ()
@@ -112,7 +98,7 @@ baseHybridSmoother:set_Dirichlet (dirichletBC)
 -- convergence check for the coarse solver
 baseConvCheck = ConvCheck ()
 baseConvCheck:set_maximum_steps (1024)
-baseConvCheck:set_minimum_defect (1e-10)
+baseConvCheck:set_minimum_defect (1e-9)
 baseConvCheck:set_reduction (1e-10)
 baseConvCheck:set_verbose (false)
 
@@ -148,13 +134,13 @@ gMG:set_num_postsmooth (4)
 -- convergence check
 ConvCheck = ConvCheck ()
 ConvCheck:set_maximum_steps (1024)
-ConvCheck:set_minimum_defect (1e-10)
+ConvCheck:set_minimum_defect (1e-9)
 ConvCheck:set_reduction (1e-10)
 ConvCheck:set_verbose (true)
 
 -- solver for the discretization
-linSolver = LinearSolver ()
---linSolver = BiCGStab ()
+--linSolver = LinearSolver ()
+linSolver = BiCGStab ()
 linSolver:set_preconditioner (gMG)
 --linSolver:set_preconditioner (hybridSmoother)
 linSolver:set_convergence_check (ConvCheck)
@@ -170,7 +156,7 @@ projBaseSmoother = ILUCPU1 ()
 projBaseConvCheck = ConvCheckCPU1 ()
 projBaseConvCheck:set_maximum_steps (1024)
 projBaseConvCheck:set_minimum_defect (1e-10)
-projBaseConvCheck:set_reduction (1e-10)
+projBaseConvCheck:set_reduction (1e-11)
 projBaseConvCheck:set_verbose (false)
 
 -- coarse grid solver for the projection
@@ -183,7 +169,7 @@ projSmoother = ILUCPU1 ()
 
 -- geometric multigrid method for the projection
 projGMG = _G ["GeometricMultiGrid"..dim.."dCPU1"] (vertApproxSpace)
-projGMG:set_base_level (1)
+projGMG:set_base_level (0)
 projGMG:set_base_solver (projBaseSolver)
 projGMG:set_smoother (projSmoother)
 projGMG:set_cycle_type (1)
@@ -194,7 +180,7 @@ projGMG:set_num_postsmooth (1)
 projConvCheck = ConvCheckCPU1 ()
 projConvCheck:set_maximum_steps (1024)
 projConvCheck:set_minimum_defect (1e-10)
-projConvCheck:set_reduction (1e-10)
+projConvCheck:set_reduction (1e-11)
 projConvCheck:set_verbose (true)
 
 -- linear solver for the projection
@@ -207,6 +193,19 @@ projection = NedelecProject (em, vertApproxSpace, projSolver)
 projection:set_Dirichlet (dirichletBC)
 
 --------------------------------------------------------------------------------
+--  Generator current
+--------------------------------------------------------------------------------
+
+print ("--> Computation of the generator current")
+
+-- loop source
+gen_current = NedelecLoopCurrent ("coilNeg", "coilPos", "cut0", vertApproxSpace, projSolver)
+-- compute source
+JG:set (0.0)
+gen_current:compute (JG, "r")
+elemDisc:set_generator_current (JG, "r,i", "coilNeg,coilPos")
+
+--------------------------------------------------------------------------------
 --  Apply Solver
 --------------------------------------------------------------------------------
 
@@ -217,20 +216,13 @@ domainDisc:assemble_linear (A, b)
 
 -- 2. set dirichlet values and start iterate
 u:set (0.0)
---ComputeNedelecDoFs ("orig_E", u, "r")
 domainDisc:adjust_solution (u)
-
---SaveVectorForConnectionViewer (u, "InitSol3d.vec")
---SaveVectorForConnectionViewer (b, "RHS3d.vec")
---SaveMatrixForConnectionViewer (u, A, "Matrix3d.mat")
 
 -- 3. init solver for linear Operator
 linSolver:init (A, u)
 
 -- 4. apply solver
 linSolver:apply_return_defect (u, b)
-
---SaveVectorForConnectionViewer (u, "Sol3d.vec")
 
 --------------------------------------------------------------------------------
 --  Apply projection
@@ -240,8 +232,6 @@ print ("--> Projection of the solution")
 
 projection:apply (u, "r,i")
 
---SaveVectorForConnectionViewer (u, "ProjSol3d.vec")
-
 --------------------------------------------------------------------------------
 --  Output
 --------------------------------------------------------------------------------
@@ -249,20 +239,25 @@ projection:apply (u, "r,i")
 print ("--> Output")
 
 out = VTKOutput ()
+out:set_binary (false)
 out:clear_selection ()
 
 -- electric field
 ReEData = NedelecGridFunctionData (u, "r")
 ImEData = NedelecGridFunctionData (u, "i")
-out:select_element (ReEData, "ReE");
-out:select_element (ImEData, "ImE");
+out:select_element (ReEData, "ReE")
+out:select_element (ImEData, "ImE")
 
 -- curl of the electric field
 ReCurlE = NedelecCurlData (u, "r")
 ImCurlE = NedelecCurlData (u, "i")
-out:select_element (ReCurlE, "ReCurlE");
-out:select_element (ImCurlE, "ImCurlE");
+out:select_element (ReCurlE, "ReCurlE")
+out:select_element (ImCurlE, "ImCurlE")
 
-out:print ("Solution3d", u)
+-- heat source
+heat = EddyCurrentHeat (u, "r,i", em)
+out:select_element (heat, "Heat")
+
+out:print ("PanSolution3d", u)
 
 -- End of File
