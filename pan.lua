@@ -258,6 +258,12 @@ out:select_element (ImCurlE, "ImCurlE")
 heat = EddyCurrentHeat (u, "r,i", em)
 out:select_element (heat, "Heat")
 
+-- subset indicators
+coil_subset_ind = SubsetIndicatorUserData (dom, "coilPos,coilNeg")
+pan_subset_ind = SubsetIndicatorUserData (dom, "pan")
+out:select_element (coil_subset_ind, "Coil")
+out:select_element (pan_subset_ind, "Pan")
+
 out:print ("PanSolution3d", u)
 
 -- End of File
