@@ -39,6 +39,9 @@ em:add ("coilPos,coilNeg", 1.0, 0.0)
 em:add ("pan", 1.0, 1.0)
 em:close ()
 
+-- Frequency of the current
+omega = 1
+
 -- Create the edge-centered approximation space for E
 print ("--> Edge-centered DoF distribution")
 edgeApproxSpace = ApproximationSpace (dom)
@@ -63,7 +66,7 @@ vertApproxSpace:print_statistic ()
 --------------------------------------------------------------------------------
 
 -- Local discretization
-elemDisc = EddyCurrent_E_Nedelec ("r,i", em, 1) -- last argument = frequency omega
+elemDisc = EddyCurrent_E_Nedelec ("r,i", em, omega) -- last argument = frequency omega
 
 -- Dirichlet BC
 dirichletBC = NedelecDirichletBC ("r,i")
@@ -249,14 +252,14 @@ out:select_element (ReEData, "ReE")
 out:select_element (ImEData, "ImE")
 
 -- curl of the electric field
-ReCurlE = NedelecCurlData (u, "r")
-ImCurlE = NedelecCurlData (u, "i")
-out:select_element (ReCurlE, "ReCurlE")
-out:select_element (ImCurlE, "ImCurlE")
+ReBData = EddyCurrentReBofEUserData (u, "r,i", omega)
+ImBData = EddyCurrentImBofEUserData (u, "r,i", omega)
+out:select_element (ReBData, "ReB")
+out:select_element (ImBData, "ImB")
 
 -- heat source
 heat = EddyCurrentHeat (u, "r,i", em)
-out:select_element (heat, "Heat")
+out:select_element (heat, "HeatSrc")
 
 -- subset indicators
 coil_subset_ind = SubsetIndicatorUserData (dom, "coilPos,coilNeg")
@@ -264,6 +267,9 @@ pan_subset_ind = SubsetIndicatorUserData (dom, "pan")
 out:select_element (coil_subset_ind, "Coil")
 out:select_element (pan_subset_ind, "Pan")
 
-out:print ("PanSolution3d", u)
+-- compose the VTU-file
+grid_level = numPreRefs + numRefs
+vtu_file_name = "PanSolution3d-lev" .. grid_level;
+out:print (vtu_file_name, u)
 
 -- End of File
