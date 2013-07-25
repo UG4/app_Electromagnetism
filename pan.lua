@@ -14,7 +14,11 @@ numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements befor
 numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 
 gridName = "grids/coil_and_pan.ugx"
+--gridName = "grids/coil_and_pan_proj.ugx"
 --gridName = "grids/coil_and_pan_2.ugx"
+
+-- Subsets used in the problem
+neededSubsets = {"box", "pan", "coilPos", "coilNeg", "cut0", "cut1", "boxBnd"}
 
 print (" Geometry: " .. gridName)
 print (" Choosen Parameter:")
@@ -28,9 +32,44 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 -- Domain Setup
 --------------------------------------------------------------------------------
 
--- Create, load, refine and distribute the domain
-neededSubsets = {"box", "pan", "coilPos", "coilNeg", "cut0", "cut1", "boxBnd"}
-dom = util.CreateAndDistributeDomain (gridName, numRefs, numPreRefs, neededSubsets)
+-- Create the domain, load the grid
+dom = Domain ()
+LoadDomain (dom, gridName)
+
+-- create Refiner
+refiner = GlobalDomainRefiner (dom)
+
+-- add Projectors to the Refiner
+refProjector = DomainRefinementProjectionHandler (dom)
+--refProjector:set_callback("panSide", CylinderProjector (dom, 0, 0, 0.2, 0, 0, 1, 0.5))
+refiner:set_refinement_callback (refProjector)
+
+-- Performing pre-refines
+if numPreRefs > numRefs then
+	print ("numPreRefs must be smaller than numRefs. Aborting.");
+	exit ();
+end
+for i = 1, numPreRefs do
+	refiner:refine ()
+end
+
+-- ToDo: Distribute the domain here
+
+-- Perform post-refine
+for i = numPreRefs + 1, numRefs do
+	refiner:refine ()
+end
+
+-- Now we loop all subsets an search for it in the SubsetHandler of the domain
+if neededSubsets ~= nil then
+	if util.CheckSubsets (dom, neededSubsets) == false then 
+		print ("Something wrong with required subsets. Aborting.");
+		exit ();
+	end
+end
+
+-- Save the geometry of the grid hierarchy
+--SaveGridHierarchyTransformed (dom:grid (), dom:subset_handler (), "coil_and_pan_refined.ugx", 2.5)
 
 -- Set the electromagnetic parameters to the subdomains
 em = EMaterial (dom)
@@ -40,7 +79,7 @@ em:add ("pan", 1.0, 1.0)
 em:close ()
 
 -- Frequency of the current
-omega = 1
+omega = 50
 
 -- Create the edge-centered approximation space for E
 print ("--> Edge-centered DoF distribution")
@@ -86,7 +125,6 @@ A = MatrixOperator ()
 u = GridFunction (edgeApproxSpace)
 b = GridFunction (edgeApproxSpace)
 JG = GridFunction (edgeApproxSpace)
-divJG = GridFunction3dCPU1 (vertApproxSpace)
 
 -- edge-centered smoother in the coarse grid solver
 edgeBaseSmoother = GaussSeidel ()
@@ -158,7 +196,7 @@ projBaseSmoother = ILUCPU1 ()
 -- convergence check for the coarse grid solver of the projection
 projBaseConvCheck = ConvCheckCPU1 ()
 projBaseConvCheck:set_maximum_steps (1024)
-projBaseConvCheck:set_minimum_defect (1e-10)
+projBaseConvCheck:set_minimum_defect (1e-11)
 projBaseConvCheck:set_reduction (1e-11)
 projBaseConvCheck:set_verbose (false)
 
@@ -182,7 +220,7 @@ projGMG:set_num_postsmooth (1)
 -- convergence check for the projection
 projConvCheck = ConvCheckCPU1 ()
 projConvCheck:set_maximum_steps (1024)
-projConvCheck:set_minimum_defect (1e-10)
+projConvCheck:set_minimum_defect (1e-11)
 projConvCheck:set_reduction (1e-11)
 projConvCheck:set_verbose (true)
 
@@ -199,14 +237,16 @@ projection:set_Dirichlet (dirichletBC)
 --  Generator current
 --------------------------------------------------------------------------------
 
+-- Loop source in the coil
+gen_current = NedelecLoopCurrent ("coilNeg", "coilPos", "cut0", vertApproxSpace, projSolver)
+gen_current:set ("r", 1.0)
+
 print ("--> Computation of the generator current")
 
--- loop source
-gen_current = NedelecLoopCurrent ("coilNeg", "coilPos", "cut0", vertApproxSpace, projSolver)
 -- compute source
 JG:set (0.0)
-gen_current:compute (JG, "r")
-elemDisc:set_generator_current (JG, "r,i", "coilNeg,coilPos")
+gen_current:compute (JG)
+elemDisc:set_generator_current (JG, "r,i", gen_current:subsets ())
 
 --------------------------------------------------------------------------------
 --  Apply Solver
@@ -251,7 +291,7 @@ ImEData = NedelecGridFunctionData (u, "i")
 out:select_element (ReEData, "ReE")
 out:select_element (ImEData, "ImE")
 
--- curl of the electric field
+-- magnetic induction
 ReBData = EddyCurrentReBofEUserData (u, "r,i", omega)
 ImBData = EddyCurrentImBofEUserData (u, "r,i", omega)
 out:select_element (ReBData, "ReB")
