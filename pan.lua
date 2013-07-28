@@ -6,6 +6,20 @@
 ]]--
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Remark on the solvability of the problem:
+-- As the matrix of the discretized problem is singular, the problem is
+-- only solvable if the rhs is in the image of the matrix, whereas this
+-- image is not the whole space. The image consists of the numerically
+-- divergence-free functions which is computed (cf. the computation of
+-- the loop source below). The computation of the rhs involves the solution
+-- of the discretized Poisson equation with the same solver as used for
+-- the projection. The accuracy of the computation of the rhs is essential
+-- for the solvability of the eddy current problem, so if your solver for
+-- the eddy current problem does not converge (in any way), try to set
+-- a higher accuracy for the computation of the rhs.
+--------------------------------------------------------------------------------
+
 ug_load_script ("ug_util.lua")
 
 -- constants
@@ -13,14 +27,17 @@ dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
 numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 
-gridName = "grids/coil_and_pan.ugx"
---gridName = "grids/coil_and_pan_proj.ugx"
---gridName = "grids/coil_and_pan_2.ugx"
+-- Geometry
+--geometry = "coil_and_pan"
+geometry = "coil_and_pan_v3"
+
+-- Grid file name
+gridName = "grids/" .. geometry .. ".ugx"
 
 -- Subsets used in the problem
 neededSubsets = {"box", "pan", "coilPos", "coilNeg", "cut0", "cut1", "boxBnd"}
 
-print (" Geometry: " .. gridName)
+print (" Geometry: " .. geometry .. " (file " .. gridName .. ")")
 print (" Choosen Parameter:")
 print ("    numRefs    = " .. numRefs)
 print ("    numPreRefs = " .. numPreRefs)
@@ -41,7 +58,9 @@ refiner = GlobalDomainRefiner (dom)
 
 -- add Projectors to the Refiner
 refProjector = DomainRefinementProjectionHandler (dom)
---refProjector:set_callback("panSide", CylinderProjector (dom, 0, 0, 0.2, 0, 0, 1, 0.5))
+refProjector:set_callback("panSide", CylinderProjector (dom, 0, 0, 0.2, 0, 0, 1, 0.5))
+refProjector:set_callback("coilOuterSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1, 0.4))
+refProjector:set_callback("coilInnerSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1, 0.2))
 refiner:set_refinement_callback (refProjector)
 
 -- Performing pre-refines
@@ -79,7 +98,7 @@ em:add ("pan", 1.0, 1.0)
 em:close ()
 
 -- Frequency of the current
-omega = 50
+omega = 1
 
 -- Create the edge-centered approximation space for E
 print ("--> Edge-centered DoF distribution")
@@ -139,7 +158,7 @@ baseHybridSmoother:set_Dirichlet (dirichletBC)
 -- convergence check for the coarse solver
 baseConvCheck = ConvCheck ()
 baseConvCheck:set_maximum_steps (1024)
-baseConvCheck:set_minimum_defect (1e-9)
+baseConvCheck:set_minimum_defect (1e-10)
 baseConvCheck:set_reduction (1e-10)
 baseConvCheck:set_verbose (false)
 
@@ -196,8 +215,8 @@ projBaseSmoother = ILUCPU1 ()
 -- convergence check for the coarse grid solver of the projection
 projBaseConvCheck = ConvCheckCPU1 ()
 projBaseConvCheck:set_maximum_steps (1024)
-projBaseConvCheck:set_minimum_defect (1e-11)
-projBaseConvCheck:set_reduction (1e-11)
+projBaseConvCheck:set_minimum_defect (1e-14)
+projBaseConvCheck:set_reduction (1e-14)
 projBaseConvCheck:set_verbose (false)
 
 -- coarse grid solver for the projection
@@ -220,8 +239,8 @@ projGMG:set_num_postsmooth (1)
 -- convergence check for the projection
 projConvCheck = ConvCheckCPU1 ()
 projConvCheck:set_maximum_steps (1024)
-projConvCheck:set_minimum_defect (1e-11)
-projConvCheck:set_reduction (1e-11)
+projConvCheck:set_minimum_defect (1e-14)
+projConvCheck:set_reduction (1e-14)
 projConvCheck:set_verbose (true)
 
 -- linear solver for the projection
@@ -309,7 +328,7 @@ out:select_element (pan_subset_ind, "Pan")
 
 -- compose the VTU-file
 grid_level = numPreRefs + numRefs
-vtu_file_name = "PanSolution3d-lev" .. grid_level;
+vtu_file_name = "PanSolution3d-".. geometry .. "-lev" .. grid_level;
 out:print (vtu_file_name, u)
 
 -- End of File
