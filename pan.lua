@@ -328,7 +328,13 @@ out:select_element (pan_subset_ind, "Pan")
 
 -- compose the VTU-file
 grid_level = numPreRefs + numRefs
-vtu_file_name = "PanSolution3d-".. geometry .. "-lev" .. grid_level;
+vtu_file_name = "PanSolution3d-".. geometry .. "-frq" .. omega .. "-lev" .. grid_level;
 out:print (vtu_file_name, u)
+
+--------------------------------------------------------------------------------
+--  Done
+--------------------------------------------------------------------------------
+
+print ("--> Done")
 
 -- End of File
