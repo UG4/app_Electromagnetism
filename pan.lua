@@ -58,9 +58,9 @@ refiner = GlobalDomainRefiner (dom)
 
 -- add Projectors to the Refiner
 refProjector = DomainRefinementProjectionHandler (dom)
-refProjector:set_callback("panSide", CylinderProjector (dom, 0, 0, 0.2, 0, 0, 1, 0.5))
-refProjector:set_callback("coilOuterSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1, 0.4))
-refProjector:set_callback("coilInnerSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1, 0.2))
+refProjector:set_callback("panSide", CylinderProjector (dom, 0, 0, 0.2, 0, 0, 1))
+refProjector:set_callback("coilOuterSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1))
+refProjector:set_callback("coilInnerSide", CylinderProjector (dom, 0, 0, 0, 0, 0, 1))
 refiner:set_refinement_callback (refProjector)
 
 -- Performing pre-refines
