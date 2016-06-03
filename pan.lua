@@ -28,8 +28,16 @@ numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements befor
 numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 
 -- Geometry
---geometry = "coil_and_pan"
-geometry = "coil_and_pan_v3"
+--geometry = "coil_and_pan" -- more elements in the coarse grid, very angular corners, no projectors
+--geometry = "coil_and_pan_v3" -- less elements in the coarse grid, better resolution of the corners, but no projectors
+geometry = "coil_and_pan_proj" -- the same as _v3, but with the projectors
+
+-- Remark:
+-- The order of the subsets in the geometry influences the convergence of the
+-- linear solver for the discretization of the Maxwell equation (because it
+-- determines the ordering of the DoFs and the problem suffers jumps of the coefficients).
+-- The order that works looks like
+-- box, pan, coilPos, coilNeg, boxBnd, panBnd, cut0, cut1, coilBnd
 
 -- Grid file name
 gridName = "grids/" .. geometry .. ".ugx"
@@ -55,13 +63,6 @@ LoadDomain (dom, gridName)
 
 -- create Refiner
 refiner = GlobalDomainRefiner (dom)
-
--- add Projectors to the Refiner
-refProjector = DomainRefinementProjectionHandler (dom)
-refProjector:set_callback("panSide", CylinderProjector (dom, {0, 0, 0.2}, {0, 0, 1}))
-refProjector:set_callback("coilOuterSide", CylinderProjector (dom, {0, 0, 0}, {0, 0, 1}))
-refProjector:set_callback("coilInnerSide", CylinderProjector (dom, {0, 0, 0}, {0, 0, 1}))
-refiner:set_refinement_callback (refProjector)
 
 -- Performing pre-refines
 if numPreRefs > numRefs then
@@ -300,36 +301,58 @@ projection:apply (u, "r,i")
 
 print ("--> Output")
 
-out = VTKOutput ()
-out:set_binary (false)
-out:clear_selection ()
+-- compose the VTU-file names
+grid_level = numPreRefs + numRefs
+entire_vtu_file_name = "PanSolution3d-".. geometry .. "-frq" .. omega .. "-lev" .. grid_level;
+coil_vtu_file_name = "PanSolution3d-".. geometry .. "-Coil-frq" .. omega .. "-lev" .. grid_level;
+pan_vtu_file_name = "PanSolution3d-".. geometry .. "-Pan-frq" .. omega .. "-lev" .. grid_level;
 
 -- electric field
 ReEData = NedelecGridFunctionData (u, "r")
 ImEData = NedelecGridFunctionData (u, "i")
-out:select_element (ReEData, "ReE")
-out:select_element (ImEData, "ImE")
 
 -- magnetic induction
 ReBData = EddyCurrentReBofEUserData (u, "r,i", omega)
 ImBData = EddyCurrentImBofEUserData (u, "r,i", omega)
-out:select_element (ReBData, "ReB")
-out:select_element (ImBData, "ImB")
 
 -- heat source
 heat = EddyCurrentHeat (u, "r,i", em)
-out:select_element (heat, "HeatSrc")
 
--- subset indicators
-coil_subset_ind = SubsetIndicatorUserData (dom, "coilPos,coilNeg")
-pan_subset_ind = SubsetIndicatorUserData (dom, "pan")
-out:select_element (coil_subset_ind, "Coil")
-out:select_element (pan_subset_ind, "Pan")
+-- VTK-objects
 
--- compose the VTU-file
-grid_level = numPreRefs + numRefs
-vtu_file_name = "PanSolution3d-".. geometry .. "-frq" .. omega .. "-lev" .. grid_level;
-out:print (vtu_file_name, u)
+print ("  > Entire domain")
+entire_out = VTKOutput ()
+--entire_out:set_binary (false)
+entire_out:clear_selection ()
+entire_out:select_element (ReEData, "ReE")
+entire_out:select_element (ImEData, "ImE")
+entire_out:select_element (ReBData, "ReB")
+entire_out:select_element (ImBData, "ImB")
+entire_out:select_element (heat, "HeatSrc")
+entire_out:print (entire_vtu_file_name, u)
+
+print ("  > The coil subdomain")
+coil_out = VTKOutput ()
+--coil_out:set_binary (false)
+coil_out:clear_selection ()
+coil_out:select_element (ReEData, "ReE")
+coil_out:select_element (ImEData, "ImE")
+coil_out:select_element (ReBData, "ReB")
+coil_out:select_element (ImBData, "ImB")
+coil_out:select_element (SubsetIndicatorUserData (dom, "coilPos,coilNeg,coilBnd,cut0,cut1"), "Coil")
+coil_out:print_subsets (coil_vtu_file_name, u, "coilPos,coilNeg,coilBnd,cut0,cut1")
+
+print ("  > The pan subdomain")
+pan_out = VTKOutput ()
+--pan_out:set_binary (false)
+pan_out:clear_selection ()
+pan_out:select_element (ReEData, "ReE")
+pan_out:select_element (ImEData, "ImE")
+pan_out:select_element (ReBData, "ReB")
+pan_out:select_element (ImBData, "ImB")
+pan_out:select_element (heat, "HeatSrc")
+pan_out:select_element (SubsetIndicatorUserData (dom, "pan,panBnd"), "Pan")
+pan_out:print_subsets (pan_vtu_file_name, u, "pan,panBnd")
 
 --------------------------------------------------------------------------------
 --  Done
