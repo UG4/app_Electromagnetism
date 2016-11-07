@@ -21,6 +21,7 @@
 --------------------------------------------------------------------------------
 
 ug_load_script ("ug_util.lua")
+ug_load_script ("util/load_balancing_util.lua")
 
 -- constants
 dim        = 3; -- the problem is formulated in 3d
@@ -57,36 +58,12 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 -- Domain Setup
 --------------------------------------------------------------------------------
 
--- Create the domain, load the grid
-dom = Domain ()
-LoadDomain (dom, gridName)
+-- Create the domain, load the grid and refine it without the distribution
+dom = util.CreateDomain (gridName, numPreRefs, neededSubsets)
+balancer.RefineAndRebalanceDomain (dom, numRefs - numPreRefs)
 
--- create Refiner
-refiner = GlobalDomainRefiner (dom)
-
--- Performing pre-refines
-if numPreRefs > numRefs then
-	print ("numPreRefs must be smaller than numRefs. Aborting.");
-	exit ();
-end
-for i = 1, numPreRefs do
-	refiner:refine ()
-end
-
--- ToDo: Distribute the domain here
-
--- Perform post-refine
-for i = numPreRefs + 1, numRefs do
-	refiner:refine ()
-end
-
--- Now we loop all subsets an search for it in the SubsetHandler of the domain
-if neededSubsets ~= nil then
-	if util.CheckSubsets (dom, neededSubsets) == false then 
-		print ("Something wrong with required subsets. Aborting.");
-		exit ();
-	end
-end
+print ("Domain-info:")
+print (dom:domain_info():to_string())
 
 -- Save the geometry of the grid hierarchy
 --SaveGridHierarchyTransformed (dom:grid (), dom:subset_handler (), "coil_and_pan_refined.ugx", 2.5)
