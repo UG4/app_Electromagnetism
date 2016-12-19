@@ -3,6 +3,9 @@
 -- \file apps/electromagnetism/ucube.lua
 -- \author Dmitry Logashenko
 -- \brief Lua-Script for the test simulation with the electromagnetism module: Unit cube with Dirichlet BC
+--
+-- A cubic (3d) insulator. In the solution, Re E should be a rotation
+-- (equal to orig_E), Im E should be 0.
 ]]--
 --------------------------------------------------------------------------------
 
@@ -12,7 +15,7 @@ ug_load_script ("util/load_balancing_util.lua")
 -- constants
 dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
-numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
+numRefs    = util.GetParamNumber ("-numRefs",    3, "number of refinements")
 
 gridName = "grids/unitcube_6tets_bnd.ugx"
 

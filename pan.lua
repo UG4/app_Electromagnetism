@@ -2,7 +2,10 @@
 --[[!
 -- \file apps/electromagnetism/pan.lua
 -- \author Dmitry Logashenko
--- \brief Simulation of electric field around a coil and a conducting disc
+-- \brief Simulation of electric field around a coil and a conducting disc.
+--
+-- The problem setting simplifies the induction cooking: The conducting disc
+-- is heated by the eddy currents induced by the magnetic field of the coil.
 ]]--
 --------------------------------------------------------------------------------
 
