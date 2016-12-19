@@ -2,16 +2,20 @@
 --[[!
 -- \file apps/electromagnetism/usquare.lua
 -- \author Dmitry Logashenko
--- \brief Lua-Script for the test simulation with the electromagnetism module
+-- \brief Lua-Script for the test simulation with the electromagnetism module: Unit square (a 2d example)
+--
+-- A square (2d) insulator. In the solution, Re E should be a rotation
+-- (equal to orig_E), Im E should be 0.
 ]]--
 --------------------------------------------------------------------------------
 
 ug_load_script ("ug_util.lua")
+ug_load_script ("util/load_balancing_util.lua")
 
 -- constants
 dim        = 2; -- the problem is formulated in 2d (for debugging)
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
-numRefs    = util.GetParamNumber ("-numRefs",    1, "number of refinements")
+numRefs    = util.GetParamNumber ("-numRefs",    5, "number of refinements")
 
 gridName = "grids/usquare.ugx"
 
@@ -28,7 +32,11 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 
 -- Create, load, refine and distribute the domain
 neededSubsets = {"Inner", "Bottom", "Top", "Left", "Right"}
-dom = util.CreateAndDistributeDomain (gridName, numRefs, numPreRefs, neededSubsets)
+dom = util.CreateDomain (gridName, numPreRefs, neededSubsets)
+balancer.RefineAndRebalanceDomain (dom, numRefs - numPreRefs)
+
+print ("Domain-info:")
+print (dom:domain_info():to_string())
 
 -- Set the electromagnetic parameters to the subdomains
 em = EMaterial (dom)
@@ -254,6 +262,6 @@ ImCurlE = NedelecCurlData (u, "i")
 out:select_element (ReCurlE, "ReCurlE");
 out:select_element (ImCurlE, "ImCurlE");
 
-out:print ("Solution2d", u)
+out:print ("USquare2d", u)
 
 -- End of File
