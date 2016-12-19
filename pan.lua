@@ -58,7 +58,7 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 -- Domain Setup
 --------------------------------------------------------------------------------
 
--- Create the domain, load the grid and refine it without the distribution
+-- Create the domain, load the grid and refine it
 dom = util.CreateDomain (gridName, numPreRefs, neededSubsets)
 balancer.RefineAndRebalanceDomain (dom, numRefs - numPreRefs)
 
