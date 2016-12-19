@@ -2,16 +2,20 @@
 --[[!
 -- \file apps/electromagnetism/cubeincube.lua
 -- \author Dmitry Logashenko
--- \brief Lua-Script for the test simulation with the electromagnetism module
+-- \brief Lua-Script for a test simulation with the electromagnetism module: A smaller cube in a larger one.
+--
+-- A conducting smaller cube is located in an insulating larger one.
+-- Constant Dirichlet BC are imposed.
 ]]--
 --------------------------------------------------------------------------------
 
 ug_load_script ("ug_util.lua")
+ug_load_script ("util/load_balancing_util.lua")
 
 -- constants
 dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
-numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
+numRefs    = util.GetParamNumber ("-numRefs",    2, "number of refinements")
 
 gridName = "grids/cubeincube.ugx"
 
@@ -28,7 +32,11 @@ InitUG (dim, AlgebraType("CPU", 2)); -- note: the block size should be 2
 
 -- Create, load, refine and distribute the domain
 neededSubsets = {"OuterCube", "InnerCube", "Bottom", "Top", "Back", "Front", "Left", "Right"}
-dom = util.CreateAndDistributeDomain (gridName, numRefs, numPreRefs, neededSubsets)
+dom = util.CreateDomain (gridName, numPreRefs, neededSubsets)
+balancer.RefineAndRebalanceDomain (dom, numRefs - numPreRefs)
+
+print ("Domain-info:")
+print (dom:domain_info():to_string())
 
 -- Set the electromagnetic parameters to the subdomains
 em = EMaterial (dom)
@@ -247,6 +255,6 @@ ImCurlE = NedelecCurlData (u, "i")
 out:select_element (ReCurlE, "ReCurlE");
 out:select_element (ImCurlE, "ImCurlE");
 
-out:print ("Solution3d", u)
+out:print ("CubeInCube3d", u)
 
 -- End of File
