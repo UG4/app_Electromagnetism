@@ -31,7 +31,7 @@ numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
 -- Geometry
 --geometry = "coil_and_pan" -- more elements in the coarse grid, very angular corners, no projectors
 --geometry = "coil_and_pan_v3" -- less elements in the coarse grid, better resolution of the corners, but no projectors
-geometry = "coil_and_pan_proj" -- the same as _v3, but with the projectors
+geometry = "coil_and_pan_proj" -- the same as _v3, but with the projectors rounding the corners
 
 -- Remark:
 -- The order of the subsets in the geometry influences the convergence of the
