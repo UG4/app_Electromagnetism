@@ -29,7 +29,7 @@ ug_load_script ("util/load_balancing_util.lua")
 -- constants
 dim        = 3; -- the problem is formulated in 3d
 numPreRefs = util.GetParamNumber ("-numPreRefs", 0, "number of refinements before parallel distribution")
-numRefs    = util.GetParamNumber ("-numRefs",    0, "number of refinements")
+numRefs    = util.GetParamNumber ("-numRefs",    2, "number of refinements")
 
 -- Geometry
 --geometry = "coil_and_pan" -- more elements in the coarse grid, very angular corners, no projectors
