@@ -115,6 +115,7 @@ vertBaseSmoother = GaussSeidelCPU1 ()
 -- hybrid smoother in the coarse grid solver
 baseHybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeBaseSmoother, vertBaseSmoother)
 baseHybridSmoother:set_Dirichlet (dirichletBC)
+baseHybridSmoother:set_skip_vertex_smoother (true)
 
 -- convergence check for the coarse solver
 baseConvCheck = ConvCheck ()
@@ -137,6 +138,7 @@ vertSmoother = GaussSeidelCPU1 ()
 -- hybrid smoother
 hybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeSmoother, vertSmoother)
 hybridSmoother:set_Dirichlet (dirichletBC)
+hybridSmoother:set_skip_vertex_smoother (true)
 
 -- transfer operators
 transferOp = NedelecTransfer (edgeApproxSpace)
@@ -146,6 +148,7 @@ gMG = GeometricMultiGrid (edgeApproxSpace)
 gMG:set_discretization (domainDisc)
 gMG:set_base_level (0)
 gMG:set_base_solver (baseSolver)
+gMG:set_gathered_base_solver_if_ambiguous (false)
 gMG:set_smoother (hybridSmoother)
 gMG:set_transfer (transferOp)
 gMG:set_cycle_type (1)
