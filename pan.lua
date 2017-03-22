@@ -245,9 +245,11 @@ gen_current:set ("r", 1.0)
 print ("--> Computation of the generator current")
 
 -- compute source
+projGMG:add_prolongation_post_process (gen_current:zero_average ())
 JG:set (0.0)
 gen_current:compute (JG)
 elemDisc:set_generator_current (JG, "r,i", gen_current:subsets ())
+projGMG:clear_transfer_post_process ()
 
 --------------------------------------------------------------------------------
 --  Apply Solver
