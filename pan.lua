@@ -150,9 +150,11 @@ baseSolver:set_convergence_check (baseConvCheck)
 
 -- edge-centered smoother
 edgeSmoother = GaussSeidel ()
+edgeSmoother:enable_consistent_interfaces (true)
 
 -- vertex-centered smoother (should be based on a scalar algebra)
 vertSmoother = GaussSeidelCPU1 ()
+vertSmoother:enable_consistent_interfaces (true)
 
 -- hybrid smoother
 hybridSmoother = HiptmairHybridSmoother (vertApproxSpace, edgeSmoother, vertSmoother)
@@ -193,6 +195,7 @@ linSolver:set_convergence_check (ConvCheck)
 
 -- vertex-centered smoother for the coarse grid solver of the projection
 projBaseSmoother = ILUCPU1 ()
+--projBaseSmoother:enable_consistent_interfaces (true)
 
 -- convergence check for the coarse grid solver of the projection
 projBaseConvCheck = ConvCheckCPU1 ()
@@ -208,6 +211,7 @@ projBaseSolver:set_convergence_check (projBaseConvCheck)
 
 -- vertex-centered smoother for the projection
 projSmoother = ILUCPU1 ()
+--projSmoother:enable_consistent_interfaces (true)
 
 -- geometric multigrid method for the projection
 projGMG = _G ["GeometricMultiGrid"..dim.."dCPU1"] (vertApproxSpace)
