@@ -141,7 +141,7 @@ baseConvCheck = ConvCheck ()
 baseConvCheck:set_maximum_steps (1024)
 baseConvCheck:set_minimum_defect (1e-10)
 baseConvCheck:set_reduction (1e-10)
-baseConvCheck:set_verbose (false)
+baseConvCheck:set_verbose (true)
 
 -- coarse grid solver
 baseSolver = BiCGStab ()
@@ -298,6 +298,9 @@ pan_vtu_file_name = "PanSolution3d-".. geometry .. "-Pan-frq" .. omega .. "-lev"
 ReEData = NedelecGridFunctionData (u, "r")
 ImEData = NedelecGridFunctionData (u, "i")
 
+ReJData = NedelecGridFunctionData (JG, "r")
+ImJData = NedelecGridFunctionData (JG, "i")
+
 -- magnetic induction
 ReBData = EddyCurrentReBofEUserData (u, "r,i", omega)
 ImBData = EddyCurrentImBofEUserData (u, "r,i", omega)
@@ -322,6 +325,8 @@ print ("  > The coil subdomain")
 coil_out = VTKOutput ()
 --coil_out:set_binary (false)
 coil_out:clear_selection ()
+coil_out:select_element (ReJData, "ReJ")
+coil_out:select_element (ImJData, "ImJ")
 coil_out:select_element (ReEData, "ReE")
 coil_out:select_element (ImEData, "ImE")
 coil_out:select_element (ReBData, "ReB")
