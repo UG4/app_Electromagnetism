@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+Bindings of script names (relative to UG4ROOT in apps and scripts path.)
+
+numProcs may be a combination of this values: 1, 2, 3, 4, 5, 6, 7, 8,
+											  9, 10, 11, 12, 13, 14, 15, 16
+or "all" as shortage for all of this values. Note that a suite is only created
+in the actual mpi environemnt.
+
+config elements should contain a param child but it also may be empty at all.
+Then it will be executed with its default parameters in serial mode 
+
+The config elements are allowed to be nested to derive parameters from its parent 
+config. For each leaf config element a testcase will be created.
+
+file: script_test_param.xml
+author: M.Scherer scherer@gcsc.uni-frankfurt.de
+-->
+
+<scripts xmlns="http://www.gcsc.de/ScriptParamMappingSchema">
+
+<!-- Default tests for the electromagnetism plugin/app -->
+
+<script path="electromagnetism_app/pan.lua">
+	<config>
+		<numProcs> 1 </numProcs>
+	</config>
+</script>
+
+</scripts>
